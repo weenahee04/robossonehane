@@ -17,11 +17,27 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
+  const resolveWebSocketUrl = useCallback(() => {
+    const explicitUrl = import.meta.env.VITE_WS_URL as string | undefined;
+    if (explicitUrl) {
+      return explicitUrl;
+    }
+
+    const apiBaseUrl = import.meta.env.VITE_API_URL as string | undefined;
+    if (apiBaseUrl) {
+      const normalizedBase = apiBaseUrl.replace(/\/+$/, '');
+      return normalizedBase.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:') + '/ws';
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/ws`;
+  }, []);
+
   const connect = useCallback(() => {
     const token = api.getToken();
     if (!token) return;
 
-    const wsUrl = import.meta.env.VITE_WS_URL || `ws://${window.location.host}/ws`;
+    const wsUrl = resolveWebSocketUrl();
     const ws = new WebSocket(`${wsUrl}?token=${token}`);
 
     ws.onopen = () => {
@@ -50,7 +66,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     };
 
     wsRef.current = ws;
-  }, []);
+  }, [resolveWebSocketUrl]);
 
   const send = useCallback((data: object) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
