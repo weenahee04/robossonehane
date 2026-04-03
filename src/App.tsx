@@ -23,15 +23,13 @@ import { AddVehiclePage } from './pages/AddVehiclePage';
 import { LegalPage } from './pages/LegalPage';
 import { ClerkSignInPage } from './pages/ClerkSignInPage';
 import { ClerkSignUpPage } from './pages/ClerkSignUpPage';
-import { ProfileCompletionPage } from './pages/ProfileCompletionPage';
 import { LoadingScreen } from './components/LoadingScreen';
 import { CustomerAuthGate } from './components/CustomerAuthGate';
 import { useAuth } from './contexts/AuthContext';
-import { useNotifications, useVehicles } from './hooks/useApi';
+import { useNotifications } from './hooks/useApi';
 
 const BOTTOM_NAV_PATHS = ['/', '/carwash', '/notification', '/history', '/profile'];
 const PUBLIC_AUTH_PATHS = ['/sign-in', '/sign-up'];
-const PROFILE_COMPLETION_PATH = '/complete-profile';
 const USE_CLERK_AUTH = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 
 function HomePage() {
@@ -86,7 +84,6 @@ function AppRoutes() {
           />
         }
       />
-      <Route path={PROFILE_COMPLETION_PATH} element={<ProfileCompletionPage />} />
       <Route
         path="/faq"
         element={<FAQPage onBack={goHome} onNavigateFeedback={() => navigate('/feedback')} />}
@@ -105,29 +102,15 @@ function AppRoutes() {
 export function App() {
   const [loading, setLoading] = useState(true);
   const location = useLocation();
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const usesBackendAuth = Boolean(import.meta.env.VITE_API_URL);
   const isPublicAuthPath = PUBLIC_AUTH_PATHS.includes(location.pathname);
   const notificationQuery = useNotifications(1, usesBackendAuth && isAuthenticated);
-  const vehiclesQuery = useVehicles(usesBackendAuth && isAuthenticated);
   const shouldGateAuth =
     usesBackendAuth &&
     !isLoading &&
     !isAuthenticated &&
     !isPublicAuthPath;
-  const shouldCheckProfileCompletion =
-    usesBackendAuth &&
-    isAuthenticated &&
-    !isLoading &&
-    !isPublicAuthPath &&
-    location.pathname !== PROFILE_COMPLETION_PATH &&
-    location.pathname !== '/add-vehicle';
-  const needsPhoneCompletion = !user?.phone?.trim();
-  const needsVehicleCompletion =
-    !vehiclesQuery.isLoading && (vehiclesQuery.data?.length ?? 0) === 0;
-  const shouldGateProfileCompletion =
-    shouldCheckProfileCompletion &&
-    (needsPhoneCompletion || needsVehicleCompletion);
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 2500);
@@ -145,8 +128,7 @@ export function App() {
   const activeNavTab = BOTTOM_NAV_PATHS.includes(location.pathname)
     ? location.pathname
     : '/';
-  const shouldHideBottomNav =
-    isPublicAuthPath || location.pathname === PROFILE_COMPLETION_PATH;
+  const shouldHideBottomNav = isPublicAuthPath;
 
   if (usesBackendAuth && isLoading && !isPublicAuthPath) {
     return (
@@ -159,8 +141,6 @@ export function App() {
   return (
     shouldGateAuth ? (
       <CustomerAuthGate />
-    ) : shouldGateProfileCompletion ? (
-      <Navigate to={PROFILE_COMPLETION_PATH} replace />
     ) : (
       <div className="app-shell">
         {loading && !isPublicAuthPath ? <LoadingScreen /> : null}
