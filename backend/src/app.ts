@@ -20,6 +20,14 @@ import { userRoutes } from './routes/users.js';
 import { vehicleRoutes } from './routes/vehicles.js';
 import { getRuntimeConfig, validateRuntimeEnv } from './lib/config.js';
 
+function matchesAllowedOrigin(allowedOrigin: string, origin: string) {
+  if (allowedOrigin === 'https://*.vercel.app') {
+    return /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+  }
+
+  return allowedOrigin === origin;
+}
+
 export function createApp() {
   const app = new Hono();
   const runtimeConfig = getRuntimeConfig();
@@ -50,7 +58,9 @@ export function createApp() {
     cors({
       origin: (origin) => {
         if (!origin) return runtimeConfig.corsOrigins[0];
-        return runtimeConfig.corsOrigins.includes(origin) ? origin : runtimeConfig.corsOrigins[0];
+        return runtimeConfig.corsOrigins.some((allowedOrigin) => matchesAllowedOrigin(allowedOrigin, origin))
+          ? origin
+          : runtimeConfig.corsOrigins[0];
       },
       credentials: true,
     })

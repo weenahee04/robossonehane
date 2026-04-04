@@ -82,6 +82,10 @@ function hasUnsafeProductionOrigin(origins: string[]) {
   });
 }
 
+function isVercelPreviewOrigin(origin: string) {
+  return /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin.trim());
+}
+
 function isScaffoldPaymentProvider(providerName: string) {
   return providerName === 'mock_promptpay' || providerName === 'generic_rest';
 }
@@ -299,12 +303,17 @@ export function getRuntimeConfig(env: RuntimeEnv = process.env): RuntimeConfig {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+  const allowPreviewOrigins = nodeEnv !== 'production';
+  const resolvedCorsOrigins = allowPreviewOrigins
+    ? Array.from(new Set([...corsOrigins, 'https://*.vercel.app']))
+    : corsOrigins;
+
   return {
     nodeEnv,
     isProduction: nodeEnv === 'production',
     isDevelopment: nodeEnv === 'development',
     customerAuthMode,
-    corsOrigins: corsOrigins.length > 0 ? corsOrigins : DEFAULT_LOCAL_ORIGINS,
+    corsOrigins: resolvedCorsOrigins.length > 0 ? resolvedCorsOrigins : DEFAULT_LOCAL_ORIGINS,
     enableDevLogin: nodeEnv !== 'production' && parseBoolean(env.AUTH_ALLOW_DEV_LOGIN, true),
     allowSimulatedWash: nodeEnv !== 'production' && parseBoolean(env.ALLOW_SIMULATED_WASH, true),
     allowManualConfirm: resolveManualConfirmEnabled(env),
